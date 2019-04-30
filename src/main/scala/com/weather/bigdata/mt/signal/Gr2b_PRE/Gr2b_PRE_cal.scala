@@ -1,9 +1,10 @@
-package com.weather.bigdata.mt.signal
+package com.weather.bigdata.mt.signal.Gr2b_PRE
 
 import java.util.Date
 
 import com.weather.bigdata.it.nc_grib.core.SciDatasetCW
 import com.weather.bigdata.it.spark.platform.signal.JsonStream
+import com.weather.bigdata.itmt.signalInput.signalInput_scala_cal
 import com.weather.bigdata.mt.basic.mt_commons.business.Fc.FcMainCW
 import com.weather.bigdata.mt.basic.mt_commons.business.Ocf.OcfReviseCW
 import com.weather.bigdata.mt.basic.mt_commons.business.Wea.WeaMainCW
@@ -16,10 +17,13 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
 
-object Gr2b_PRE {
-  private val gr2bFrontOpen: Boolean = PropertiesUtil.gr2bFrontOpen
-  private val timeSteps = Constant.TimeSteps
-  def main(signalJson:String,splitFile:String): Unit ={
+class Gr2b_PRE_cal extends signalInput_scala_cal{
+
+
+  override def strategy (signalJson:String,splitFile:String): Boolean = {
+    val gr2bFrontOpen: Boolean = PropertiesUtil.gr2bFrontOpen
+    val timeSteps = Constant.TimeSteps
+
     // /站点数据
     val StnIdGetLatLon: mutable.HashMap[String,String]=ReadFile.ReadStationInfoMap_IdGetlatlon_stainfo_nat
     val (dataType: String, applicationTime: Date, generationFileName: String, timeStamp: Date, attribute: String) = JsonStream.analysisJsonStream(signalJson)
@@ -43,14 +47,14 @@ object Gr2b_PRE {
     val fcweaflag :(Boolean,Boolean)= {
       if(typeMap_Ocf1h.isEmpty && typeMap_Ocf12h.isEmpty){
         if(!containsWea0FcType){
-          val flag0=FcMainCW.parallelfc_ReturnFlag(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, this.timeSteps)
+          val flag0=FcMainCW.parallelfc_ReturnFlag(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, timeSteps)
           (flag0,false)
         }else{
-          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, this.timeSteps)
+          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, timeSteps)
           val flag0=WeaMainCW.afterFcWea0_ReturnFlag(rdd0, fcdate, stationInfos_fc)
           (flag0,flag0)
         }
-      }else if((!typeMap_Ocf1h.isEmpty) && (!typeMap_Ocf12h.isEmpty)){
+      }else if( typeMap_Ocf1h.nonEmpty && typeMap_Ocf12h.nonEmpty ){
         val sciGeo=ShareData.sciGeoCW_ExistOrCreat
         val ocf1hsignal = MapStream.getLastest(typeMap_Ocf1h)
         val ocf12hsignal = MapStream.getLastest(typeMap_Ocf12h)
@@ -82,13 +86,17 @@ object Gr2b_PRE {
           })
         }
         //PRE 主流程
-        val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, this.timeSteps)
+        val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, timeSteps)
+
         //PRE ocf订正
         val rdd1:RDD[SciDatasetCW]=OcfReviseCW.ReturnData_plusStation(rdd0,sciGeo,ocffileArr,stationInfos_fc)
+
         //PRE wea重算
         val rdd2:RDD[SciDatasetCW]=WeaMainCW.afterFcWea0_ReturnRdd(rdd1,fcdate,stationInfos_fc)
+
         //Wea ocf订正
         val flag0=WeaMainCW.afterFcOcfWea2(rdd2,sciGeo,ocffileArr,stationInfos_fc)
+
         (flag0,flag0)
       }else{
         val e:Exception=new Exception("ocf信号出现故障0,请查明原因")
@@ -99,8 +107,8 @@ object Gr2b_PRE {
         val typeSetfileName1: String = PropertiesUtil.gettypeSetfileName(WeatherDate.previousFCDate(fcdate), splitFile)
         val TypeMap1: mutable.HashMap[(String, Date), (String, Date, String)] = MapStream.readMap(typeSetfileName1)
         val (typeMap_Gr2b1, typeMap_Ocf1h1, typeMap_Ocf12h1, typeMap_Obs1, typeMap_other1) = MapStream.sortTypeMap(TypeMap1)
-        if(!typeMap_Ocf1h1.isEmpty && !typeMap_Ocf12h1.isEmpty){
-          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, this.timeSteps)
+        if(typeMap_Ocf1h1.nonEmpty && typeMap_Ocf12h1.nonEmpty){
+          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, timeSteps)
           val rdd1:RDD[SciDatasetCW]=WeaMainCW.afterFcWea0_ReturnRdd(rdd0,fcdate,stationInfos_fc)
           val sciGeo=ShareData.sciGeoCW_ExistOrCreat
 
@@ -140,23 +148,48 @@ object Gr2b_PRE {
         }else{
           val e:Exception=new Exception("ocf信号出现故障1,请查明原因")
           e.printStackTrace()
-          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, this.timeSteps)
+          val rdd0:RDD[SciDatasetCW]=FcMainCW.parallelfc_ReturnRDD(splitFile, fcType, fcdate, generationFileName, ExtremMap, stationInfos_fc, gr2bFrontOpen, timeSteps)
           val flag0= WeaMainCW.afterFcWea0_ReturnFlag(rdd0, fcdate, stationInfos_fc)
           (flag0,flag0)
         }
       }
     }
     if (fcweaflag._1) {
-      SignalStream.writeObssignal(splitFile,fcdate, fcType, this.timeSteps)
-      SignalStream.reduceLatLonsignal(splitFile,fcdate,fcType,this.timeSteps)
+      SignalStream.writeObssignal(splitFile,fcdate, fcType, timeSteps)
+      SignalStream.reduceLatLonsignal(splitFile,fcdate,fcType,timeSteps)
 
       if(fcweaflag._2){
-        SignalStream.writeObssignal(splitFile,fcdate, Constant.WEATHER, this.timeSteps)
+        SignalStream.writeObssignal(splitFile,fcdate, Constant.WEATHER, timeSteps)
         SignalStream.reduceLatLonsignal(splitFile,fcdate,Constant.WEATHER,timeSteps)
       }
 
       //更新数据信号收集池
       MapStream.updateMap(signalJson,splitFile)
     }
+    fcweaflag._1 || fcweaflag._2
+  }
+
+  override def truedone (signalJson: String, splitFile: String): Unit = {
+    //    val timeSteps = Constant.TimeSteps
+    //
+    //    val (dataType: String, applicationTime: Date, generationFileName: String, timeStamp: Date, attribute: String) = JsonStream.analysisJsonStream(signalJson)
+    //
+    //    val fcType: String = dataType.split("_").last
+    //    val fcdate: Date = applicationTime
+    //
+    //    SignalStream.writeObssignal(splitFile,fcdate, fcType, timeSteps)
+    //    SignalStream.reduceLatLonsignal(splitFile,fcdate,fcType,timeSteps)
+    //
+    //
+    //    SignalStream.writeObssignal(splitFile,fcdate, Constant.WEATHER, timeSteps)
+    //    SignalStream.reduceLatLonsignal(splitFile,fcdate,Constant.WEATHER,timeSteps)
+    //
+    //
+    //    //更新数据信号收集池
+    //    MapStream.updateMap(signalJson,splitFile)
+  }
+
+  override def falsedone (signalJson: String, splitFile: String): Unit = {
+
   }
 }

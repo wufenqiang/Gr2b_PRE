@@ -4,60 +4,44 @@
     <artifactId>Gr2b_PRE</artifactId>
     <version>0.0.1-felix</version>
     <inceptionYear>2008</inceptionYear>
+
+    <parent>
+        <groupId>com.weather.bigdata.itmt</groupId>
+        <artifactId>signalInputParent</artifactId>
+        <version>0.0.1-felix</version>
+        <relativePath />
+    </parent>
+
     <properties>
-        <scala.version>2.11.8</scala.version>
-        <java.version>1.8</java.version>
         <mt_commons.version>0.0.1-felix</mt_commons.version>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>scala-tools.org</id>
-            <name>Scala-Tools Maven2 Repository</name>
-            <url>http://scala-tools.org/repo-releases</url>
-        </repository>
-    </repositories>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>scala-tools.org</id>
-            <name>Scala-Tools Maven2 Repository</name>
-            <url>http://scala-tools.org/repo-releases</url>
-        </pluginRepository>
-    </pluginRepositories>
-
     <dependencies>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>${scala.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>com.weather.bigdata.mt.basic</groupId>
             <artifactId>mt_commons</artifactId>
             <version>${mt_commons.version}</version>
             <scope>compile</scope>
         </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.4</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.specs</groupId>
-            <artifactId>specs</artifactId>
-            <version>1.2.5</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
-        <sourceDirectory>src/main/scala</sourceDirectory>
-        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <!--定义编译的源代码区域-->
+        <sourceDirectory>src/main/scala/com/weather/bigdata/mt/signal/${pom.artifactId}</sourceDirectory>
+        <!--定义resource的区域-->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
+        <!--编译插件-->
         <plugins>
+            <!--scala编译插件-->
             <plugin>
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
@@ -77,6 +61,7 @@
                 </configuration>
             </plugin>
 
+            <!--定义主函数入口-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -84,31 +69,32 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <classpathPrefix>${artifactId}_libs/</classpathPrefix>
-                            <mainClass>com.weather.bigdata.mt.signal.${artifactId}</mainClass>
+                            <!--<classpathPrefix>${artifactId}_libs/</classpathPrefix>-->
+                            <mainClass>com.weather.bigdata.mt.signal.${artifactId}.${artifactId}_main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
+
             <!--将依赖包复制出-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>
-                                ${project.build.directory}/${artifactId}_libs/
-                            </outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--<plugin>-->
+            <!--<groupId>org.apache.maven.plugins</groupId>-->
+            <!--<artifactId>maven-dependency-plugin</artifactId>-->
+            <!--<executions>-->
+            <!--<execution>-->
+            <!--<id>copy-dependencies</id>-->
+            <!--<phase>prepare-package</phase>-->
+            <!--<goals>-->
+            <!--<goal>copy-dependencies</goal>-->
+            <!--</goals>-->
+            <!--<configuration>-->
+            <!--<outputDirectory>-->
+            <!--${project.build.directory}/${artifactId}_libs/-->
+            <!--</outputDirectory>-->
+            <!--</configuration>-->
+            <!--</execution>-->
+            <!--</executions>-->
+            <!--</plugin>-->
 
             <!--将依赖注入jar包内-->
             <!--<plugin>-->
@@ -154,15 +140,5 @@
             <!--</plugin>-->
         </plugins>
     </build>
-    <reporting>
-        <plugins>
-            <plugin>
-                <groupId>org.scala-tools</groupId>
-                <artifactId>maven-scala-plugin</artifactId>
-                <configuration>
-                    <scalaVersion>${scala.version}</scalaVersion>
-                </configuration>
-            </plugin>
-        </plugins>
-    </reporting>
+
 </project>
